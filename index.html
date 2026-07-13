@@ -17,6 +17,8 @@
             --secondary-hover: #0891b2;
             --accent: #10b981;
             --accent-hover: #059669;
+            --danger: #f43f5e;
+            --danger-hover: #e11d48;
             --text-dark: #1e293b;
             --text-muted: #64748b;
             --card-bg: rgba(255, 255, 255, 0.9);
@@ -114,6 +116,8 @@
         .btn-secondary:hover { background: var(--secondary-hover); }
         .btn-accent { background: var(--accent); color: white; }
         .btn-accent:hover { background: var(--accent-hover); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: var(--danger-hover); }
 
         /* Gate / Access Screen */
         #gateScreen {
@@ -280,7 +284,7 @@
         <div class="meta-grid">
             <div>
                 <label for="clientName">Client Name</label>
-                <input type="text" id="clientName" placeholder="Enter Client Name..." value="Acme Corp">
+                <input type="text" id="clientName" placeholder="Enter Client Name..." value="CHRISTOPHER STONE-MOORE">
             </div>
             <div>
                 <label for="weekStarterDate">Week Commencing (Mon)</label>
@@ -303,6 +307,7 @@
                         </select>
                 </div>
                 <button class="btn-secondary" onclick="exportToCSV()">Download CSV 📥</button>
+                <button class="btn-danger" onclick="clearCurrentSlot()">Clear Slot 🗑️</button>
             </div>
             
             <div class="action-group-right">
@@ -314,18 +319,16 @@
     <script>
         const SECURE_CODE = "CSM-29";
         const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const DEFAULT_CLIENT = "CHRISTOPHER STONE-MOORE";
         
-        // Formspree Target Endpoint (Replace with your actual Formspree endpoint token ID if needed)
-        // Leaving standard system fallbacks so it securely runs standard form submissions instantly
         let formspreeEndpoint = "https://formspree.io/f/mqakozze"; 
 
-        // Local Document States Initialization
+        // Local Document States shadows
         document.addEventListener("DOMContentLoaded", () => {
             initSlotOptions();
             setDefaultMonday();
             generateDayCards();
             
-            // Auto-focus passcode field
             document.getElementById('passcodeInput').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') verifyPasscode();
             });
@@ -339,7 +342,7 @@
             if (inputVal === SECURE_CODE) {
                 document.getElementById('gateScreen').style.display = 'none';
                 document.getElementById('mainScreen').style.display = 'block';
-                // Try reading initial data configuration from standard primary slot 1
+                // Automatically fetch and load whatever is in Slot 1 initially
                 loadFromSelectedSlot();
             } else {
                 errDiv.textContent = "❌ Invalid passcode. Please try again.";
@@ -362,11 +365,10 @@
         // 3. Set structural Monday initialization reference anchor points
         function setDefaultMonday() {
             const now = new Date();
-            const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday...
+            const currentDay = now.getDay(); 
             const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
             const targetMonday = new Date(now.setDate(now.getDate() + distanceToMonday));
             
-            // Format to standard ISO string short notation format YYYY-MM-DD
             const formattedDate = targetMonday.toISOString().split('T')[0];
             document.getElementById('weekStarterDate').value = formattedDate;
         }
@@ -397,8 +399,8 @@
                         </div>
                         <div>
                             <label>Shift Notes</label>
-                            <textarea id="notes_${index}" maxlength="600" placeholder="Enter notes here..." rows="2" oninput="updateCharCount(${index})"></textarea>
-                            <div class="char-counter"><span id="charCount_${index}">0</span>/600 chars</div>
+                            <textarea id="notes_${index}" maxlength="250" placeholder="Enter notes here..." rows="2" oninput="updateCharCount(${index})"></textarea>
+                            <div class="char-counter"><span id="charCount_${index}">0</span>/250 chars</div>
                         </div>
                     </div>
                 `;
@@ -435,7 +437,7 @@
             counter.textContent = textarea.value.length;
         }
 
-        // 6. Local Storage Data Schema Management Mapping Framework
+        // 6. Form State Compiling Packager
         function packageFormData() {
             const data = {
                 clientName: document.getElementById('clientName').value,
@@ -457,23 +459,26 @@
             return data;
         }
 
+        // 7. Load and display data onto UI form inputs
         function unpackFormData(data) {
             if (!data) return;
-            if (data.clientName !== undefined) document.getElementById('clientName').value = data.clientName;
-            if (data.weekCommencing !== undefined) document.getElementById('weekStarterDate').value = data.weekCommencing;
-            if (data.allocatedUsers !== undefined) document.getElementById('allocatedUsers').value = data.allocatedUsers;
+            document.getElementById('clientName').value = data.clientName || DEFAULT_CLIENT;
+            if (data.weekCommencing) {
+                document.getElementById('weekStarterDate').value = data.weekCommencing;
+            } else {
+                setDefaultMonday();
+            }
+            document.getElementById('allocatedUsers').value = data.allocatedUsers || '';
             
             calculateWeekDates();
 
             if (data.shifts && Array.isArray(data.shifts)) {
                 data.shifts.forEach((shift, index) => {
                     if(index >= DAYS_OF_WEEK.length) return;
-                    if(shift.startTime !== undefined) document.getElementById(`timeStart_${index}`).value = shift.startTime;
-                    if(shift.endTime !== undefined) document.getElementById(`timeEnd_${index}`).value = shift.endTime;
-                    if(shift.notes !== undefined) {
-                        document.getElementById(`notes_${index}`).value = shift.notes;
-                        updateCharCount(index);
-                    }
+                    document.getElementById(`timeStart_${index}`).value = shift.startTime || '';
+                    document.getElementById(`timeEnd_${index}`).value = shift.endTime || '';
+                    document.getElementById(`notes_${index}`).value = shift.notes || '';
+                    updateCharCount(index);
                 });
             }
         }
@@ -483,13 +488,18 @@
             localStorage.setItem(slotId, JSON.stringify(data));
         }
 
+        // Dropdown interactive loading framework change event
         function loadFromSelectedSlot() {
             const activeSlot = document.getElementById('saveSlotSelect').value;
             const storedData = localStorage.getItem(activeSlot);
+            
             if (storedData) {
                 unpackFormData(JSON.parse(storedData));
             } else {
-                // Clear active shifts fields if slot is completely brand new
+                // If empty slot, scrub current dynamic input tables but preserve core context settings
+                document.getElementById('clientName').value = DEFAULT_CLIENT;
+                document.getElementById('allocatedUsers').value = '';
+                setDefaultMonday();
                 DAYS_OF_WEEK.forEach((_, index) => {
                     document.getElementById(`timeStart_${index}`).value = '';
                     document.getElementById(`timeEnd_${index}`).value = '';
@@ -499,26 +509,35 @@
             }
         }
 
-        // Find next incremental empty slot key or fallback sequentially
+        // Clear Selected Local Slot Engine
+        function clearCurrentSlot() {
+            const activeSlotSelector = document.getElementById('saveSlotSelect');
+            const currentSlotKey = activeSlotSelector.value;
+            const userFriendlyName = currentSlotKey.replace('_', ' ').toUpperCase();
+
+            if (confirm(`Are you sure you want to completely clear all data inside [${userFriendlyName}]?`)) {
+                localStorage.removeItem(currentSlotKey);
+                loadFromSelectedSlot(); // Instantly update view to structural empty configurations
+            }
+        }
+
         function getNextAvailableSlotNumber(currentSlotKey) {
             let currentNum = parseInt(currentSlotKey.replace('week_slot_', ''));
             let nextNum = currentNum + 1;
-            if (nextNum > 52) nextNum = 1; // Cycle loop fallback security boundaries
+            if (nextNum > 52) nextNum = 1; 
             return nextNum;
         }
 
-        // 7. Data Compilation & Export Functionality (CSV Transformation Engine)
+        // 8. CSV Data Compilation Engine
         function exportToCSV() {
             const data = packageFormData();
             let csvRows = [];
             
-            // Document Headers Metadata Metrics Row Configuration
             csvRows.push(`"Client Name","${data.clientName.replace(/"/g, '""')}"`);
             csvRows.push(`"Week Commencing","${data.weekCommencing}"`);
             csvRows.push(`"Allocated Users","${data.allocatedUsers.replace(/"/g, '""')}"`);
-            csvRows.push(""); // Spacing Row
+            csvRows.push(""); 
             
-            // Content Structural Headings Matrix Data Map Columns
             csvRows.push(`"Day","Date","Start Time","End Time","Shift Notes"`);
             
             data.shifts.forEach(shift => {
@@ -535,23 +554,20 @@
             document.body.removeChild(link);
         }
 
-        // 8. Integrated Workflow Chain Event Handlers
+        // 9. Integrated Submission Lifecycle Chain
         function handleSaveAndSubmitChain() {
             const activeSlotSelector = document.getElementById('saveSlotSelect');
             const currentSlotKey = activeSlotSelector.value;
             
-            // Step A: Save execution directly to local space slot config array
+            // Step A: Save current view entries safely
             saveToSlot(currentSlotKey);
             
-            // Step B: Submit packaged telemetry array downstream safely directly via hidden form elements payload maps to Formspree
+            // Step B: Submit packaged array data maps downstream cleanly to Formspree
             const datasetPayload = packageFormData();
-            
-            // Constructing programmatic DOM submission system payload container components dynamically
             const formspreeForm = document.getElementById('formspreePayloadForm');
             formspreeForm.action = formspreeEndpoint;
-            formspreeForm.innerHTML = ''; // Fresh clean field mappings initialization
+            formspreeForm.innerHTML = ''; 
 
-            // Populate flattened data mappings for easy to read Formspree notification emails
             const addHiddenField = (name, val) => {
                 let input = document.createElement('input');
                 input.type = 'hidden';
@@ -570,17 +586,15 @@
                 addHiddenField(`${shift.dayName}_(${shift.dateText})_Notes`, shift.notes);
             });
 
-            // Step C: Determine next automation slot sequence before hard page refreshes execution triggers
+            // Step C: Sequence next incremental tracker position target
             const nextSlotIndex = getNextAvailableSlotNumber(currentSlotKey);
             activeSlotSelector.value = `week_slot_${nextSlotIndex}`;
             
-            // Step D: Inform user, submit to formspree, and wipe state/refresh application layout viewport back to entry gate
+            // Step D: Prompt execution notification, fire submission form, refresh document context viewport
             alert(`🎉 Success!\n\n1. Current shifts saved locally to [${currentSlotKey.replace('_',' ')}].\n2. Next active view automated to [Week Slot ${nextSlotIndex}].\n3. Formspree payload compiled.\n\nClick OK to finalize submission and reset.`);
             
-            // Submit form layout programmatically as target submission pipeline safely
             formspreeForm.submit();
 
-            // Fallback fallback reload simulation strategy in sync mode scenario
             setTimeout(() => {
                 window.location.reload();
             }, 350);
