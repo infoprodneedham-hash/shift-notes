@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shift Notes Tracker</title>
-    <!-- Google Fonts for playful/bubbly typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
@@ -109,6 +108,13 @@
 
         button:active {
             transform: scale(0.98);
+        }
+
+        button:disabled {
+            background: #cbd5e1 !important;
+            color: #94a3b8 !important;
+            cursor: not-allowed;
+            transform: none !important;
         }
 
         .btn-primary { background: var(--primary); color: white; }
@@ -262,7 +268,6 @@
 </head>
 <body>
 
-    <!-- 1. PASSCODE ACCESS GATE SCREEN -->
     <div id="gateScreen" class="bubble-card">
         <h1>Welcome! ✨</h1>
         <p>Please enter your passcode to view your shift logs.</p>
@@ -273,7 +278,6 @@
         <button class="btn-primary" onclick="verifyPasscode()" style="width: 100%;">Unlock Dashboard 🔓</button>
     </div>
 
-    <!-- 2. MAIN APPLICATION SCREEN -->
     <main id="mainScreen" class="bubble-card">
         <header>
             <h1 id="appTitle">Shift Notes Manager 📝</h1>
@@ -282,10 +286,6 @@
             </p>
         </header>
 
-        <!-- Dynamic Configuration Formspree Destination Hook -->
-        <form id="formspreePayloadForm" action="https://formspree.io/f/mdaqoowb" method="POST" style="display:none;"></form>
-
-        <!-- Meta Input Fields & Base Setups -->
         <div class="meta-grid">
             <div>
                 <label for="clientName">Client Name</label>
@@ -301,19 +301,15 @@
             </div>
         </div>
 
-        <!-- One Week Dynamic Form Matrix Container -->
         <div class="week-container" id="weekContainer">
-            <!-- Day rows injected programmatically via JS -->
-        </div>
+            </div>
 
-        <!-- Footer Control Dashboard Platform -->
         <div class="action-bar">
             <div class="action-group-left">
                 <div class="slot-selector-wrapper">
                     <label for="saveSlotSelect" style="margin-bottom:0; white-space:nowrap;">Target Slot:</label>
                     <select id="saveSlotSelect">
-                        <!-- 52 Dynamic Weeks Options populated dynamically by JS -->
-                    </select>
+                        </select>
                 </div>
                 <button class="btn-primary" onclick="loadFromSelectedSlot()">Load Record 📂</button>
                 <button class="btn-secondary" onclick="exportToCSV()">Download CSV 📥</button>
@@ -321,12 +317,11 @@
             </div>
             
             <div class="action-group-right">
-                <button class="btn-accent" onclick="handleSaveAndSubmitChain()">Save & Submit Week 🚀</button>
+                <button id="submitBtn" class="btn-accent" onclick="handleSaveAndSubmitChain()">Save & Submit Week 🚀</button>
             </div>
         </div>
     </main>
 
-    <!-- SYSTEM LOGIC CONFIGURATIONS -->
     <script>
         const SECURE_CODE = "CSM-29";
         const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -504,19 +499,17 @@
         function saveToSlot(slotId) {
             const data = packageFormData();
             localStorage.setItem(slotId, JSON.stringify(data));
-            initSlotOptions(); // Refresh the labels in the dropdown list
+            initSlotOptions(); 
         }
 
         // Dedicated load method to review saved slot contents
         function loadFromSelectedSlot() {
             const activeSlot = document.getElementById('saveSlotSelect').value;
             const storedData = localStorage.getItem(activeSlot);
-            const slotFriendlyName = activeSlot.replace('_', ' ').toUpperCase();
             
             if (storedData) {
                 unpackFormData(JSON.parse(storedData));
             } else {
-                // If checking an empty slot, reset input logs but safeguard setup properties
                 document.getElementById('clientName').value = DEFAULT_CLIENT;
                 document.getElementById('allocatedUsers').value = '';
                 setDefaultMonday();
@@ -537,8 +530,8 @@
 
             if (confirm(`Are you sure you want to completely clear all data inside [${userFriendlyName}]?`)) {
                 localStorage.removeItem(currentSlotKey);
-                initSlotOptions(); // Re-render markers
-                loadFromSelectedSlot(); // Update layout view
+                initSlotOptions(); 
+                loadFromSelectedSlot(); 
             }
         }
 
@@ -575,50 +568,65 @@
             document.body.removeChild(link);
         }
 
-        // 9. Integrated Submission Lifecycle Chain
+        // 9. Integrated Submission Lifecycle Chain (Fixed with modern Async Fetch handling)
         function handleSaveAndSubmitChain() {
             const activeSlotSelector = document.getElementById('saveSlotSelect');
             const currentSlotKey = activeSlotSelector.value;
+            const submitBtn = document.getElementById('submitBtn');
             
-            // Step A: Save current view entries safely
+            // Disable button visually to indicate working state
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Sending... ⏳";
+            
+            // Step A: Save current view entries to LocalStorage securely
             saveToSlot(currentSlotKey);
             
-            // Step B: Submit packaged array data maps downstream cleanly to Formspree
+            // Step B: Package data into standard key-value layout pairs for Formspree mapping
             const datasetPayload = packageFormData();
-            const formspreeForm = document.getElementById('formspreePayloadForm');
-            formspreeForm.action = formspreeEndpoint;
-            formspreeForm.innerHTML = ''; 
+            const formData = new FormData();
 
-            const addHiddenField = (name, val) => {
-                let input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = name;
-                input.value = val;
-                formspreeForm.appendChild(input);
-            };
-
-            addHiddenField('Client Name', datasetPayload.clientName);
-            addHiddenField('Week Commencing Mon Date', datasetPayload.weekCommencing);
-            addHiddenField('Allocated Reporting Users', datasetPayload.allocatedUsers);
-            addHiddenField('Target System Archive Slot Saved', currentSlotKey);
+            formData.append('Client Name', datasetPayload.clientName);
+            formData.append('Week Commencing Mon Date', datasetPayload.weekCommencing);
+            formData.append('Allocated Reporting Users', datasetPayload.allocatedUsers);
+            formData.append('Target System Archive Slot Saved', currentSlotKey);
 
             datasetPayload.shifts.forEach((shift) => {
-                addHiddenField(`${shift.dayName}_(${shift.dateText})_Timing`, `${shift.startTime} to ${shift.endTime}`);
-                addHiddenField(`${shift.dayName}_(${shift.dateText})_Notes`, shift.notes);
+                formData.append(`${shift.dayName}_(${shift.dateText})_Timing`, `${shift.startTime || 'No Shift'} to ${shift.endTime || 'No Shift'}`);
+                formData.append(`${shift.dayName}_(${shift.dateText})_Notes`, shift.notes || 'No entry.');
             });
 
-            // Step C: Sequence next incremental tracker position target
-            const nextSlotIndex = getNextAvailableSlotNumber(currentSlotKey);
-            activeSlotSelector.value = `week_slot_${nextSlotIndex}`;
-            
-            // Step D: Prompt execution notification, fire submission form, refresh document context viewport
-            alert(`🎉 Success!\n\n1. Current shifts saved locally to [${currentSlotKey.replace('_',' ')}].\n2. Next active view automated to [Week Slot ${nextSlotIndex}].\n3. Formspree payload compiled.\n\nClick OK to finalize submission and reset.`);
-            
-            formspreeForm.submit();
-
-            setTimeout(() => {
-                window.location.reload();
-            }, 350);
+            // Step C: Dispatch payload securely via async background POST fetch call
+            fetch(formspreeEndpoint, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Step D: Calculate incremental next slot destination target safely
+                    const nextSlotIndex = getNextAvailableSlotNumber(currentSlotKey);
+                    
+                    // Update current choice inside LocalStorage config matrix maps before page reset
+                    activeSlotSelector.value = `week_slot_${nextSlotIndex}`;
+                    
+                    alert(`🎉 Success!\n\n1. Current shifts saved locally to [${currentSlotKey.replace('_',' ')}].\n2. Next view advanced to [Week Slot ${nextSlotIndex}].\n3. Notes sent to Formspree successfully.\n\nClick OK to return to the gateway layout.`);
+                    
+                    // Safe browser context refresh execution now that request delivery is fully complete
+                    window.location.reload();
+                } else {
+                    throw new Error('Server transmission error response.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('⚠️ Formspree submission failed. Your notes are still securely saved locally in this slot. Please check your internet connection or Formspree endpoint URL.');
+                
+                // Re-enable button so user can try again if connection dropped
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Save & Submit Week 🚀";
+            });
         }
     </script>
 </body>
