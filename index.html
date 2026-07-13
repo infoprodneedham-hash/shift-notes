@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shift Notes Tracker</title>
+    <!-- Google Fonts for playful/bubbly typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
@@ -228,7 +229,7 @@
         
         .slot-selector-wrapper select {
             width: auto;
-            min-width: 140px;
+            min-width: 190px;
         }
 
         /* Responsive Breakpoints */
@@ -261,6 +262,7 @@
 </head>
 <body>
 
+    <!-- 1. PASSCODE ACCESS GATE SCREEN -->
     <div id="gateScreen" class="bubble-card">
         <h1>Welcome! ✨</h1>
         <p>Please enter your passcode to view your shift logs.</p>
@@ -271,6 +273,7 @@
         <button class="btn-primary" onclick="verifyPasscode()" style="width: 100%;">Unlock Dashboard 🔓</button>
     </div>
 
+    <!-- 2. MAIN APPLICATION SCREEN -->
     <main id="mainScreen" class="bubble-card">
         <header>
             <h1 id="appTitle">Shift Notes Manager 📝</h1>
@@ -279,8 +282,10 @@
             </p>
         </header>
 
+        <!-- Dynamic Configuration Formspree Destination Hook -->
         <form id="formspreePayloadForm" action="https://formspree.io/f/mdaqoowb" method="POST" style="display:none;"></form>
 
+        <!-- Meta Input Fields & Base Setups -->
         <div class="meta-grid">
             <div>
                 <label for="clientName">Client Name</label>
@@ -296,16 +301,21 @@
             </div>
         </div>
 
+        <!-- One Week Dynamic Form Matrix Container -->
         <div class="week-container" id="weekContainer">
-            </div>
+            <!-- Day rows injected programmatically via JS -->
+        </div>
 
+        <!-- Footer Control Dashboard Platform -->
         <div class="action-bar">
             <div class="action-group-left">
                 <div class="slot-selector-wrapper">
-                    <label for="saveSlotSelect" style="margin-bottom:0; white-space:nowrap;">Active Slot:</label>
-                    <select id="saveSlotSelect" onchange="loadFromSelectedSlot()">
-                        </select>
+                    <label for="saveSlotSelect" style="margin-bottom:0; white-space:nowrap;">Target Slot:</label>
+                    <select id="saveSlotSelect">
+                        <!-- 52 Dynamic Weeks Options populated dynamically by JS -->
+                    </select>
                 </div>
+                <button class="btn-primary" onclick="loadFromSelectedSlot()">Load Record 📂</button>
                 <button class="btn-secondary" onclick="exportToCSV()">Download CSV 📥</button>
                 <button class="btn-danger" onclick="clearCurrentSlot()">Clear Slot 🗑️</button>
             </div>
@@ -316,6 +326,7 @@
         </div>
     </main>
 
+    <!-- SYSTEM LOGIC CONFIGURATIONS -->
     <script>
         const SECURE_CODE = "CSM-29";
         const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -342,7 +353,7 @@
             if (inputVal === SECURE_CODE) {
                 document.getElementById('gateScreen').style.display = 'none';
                 document.getElementById('mainScreen').style.display = 'block';
-                // Automatically fetch and load whatever is in Slot 1 initially
+                // Automatically load whatever is initialized inside Slot 1
                 loadFromSelectedSlot();
             } else {
                 errDiv.textContent = "❌ Invalid passcode. Please try again.";
@@ -350,16 +361,23 @@
             }
         }
 
-        // 2. Setup standard dropdown slots options (1-52 Weeks allocation)
+        // 2. Setup standard dropdown slots options with visual record detection indicators
         function initSlotOptions() {
             const selector = document.getElementById('saveSlotSelect');
+            const savedValueBackup = selector.value || "week_slot_1";
             selector.innerHTML = '';
+            
             for (let i = 1; i <= 52; i++) {
+                let slotKey = `week_slot_${i}`;
                 let opt = document.createElement('option');
-                opt.value = `week_slot_${i}`;
-                opt.textContent = `Week Slot ${i}`;
+                opt.value = slotKey;
+                
+                // Inspect localStorage to flag active review states natively
+                let hasData = localStorage.getItem(slotKey) !== null;
+                opt.textContent = `Week Slot ${i} ${hasData ? '📦 (SAVED)' : '⚪ (EMPTY)'}`;
                 selector.appendChild(opt);
             }
+            selector.value = savedValueBackup;
         }
 
         // 3. Set structural Monday initialization reference anchor points
@@ -459,7 +477,7 @@
             return data;
         }
 
-        // 7. Load and display data onto UI form inputs
+        // 7. Load and display historical data onto UI form inputs
         function unpackFormData(data) {
             if (!data) return;
             document.getElementById('clientName').value = data.clientName || DEFAULT_CLIENT;
@@ -486,17 +504,19 @@
         function saveToSlot(slotId) {
             const data = packageFormData();
             localStorage.setItem(slotId, JSON.stringify(data));
+            initSlotOptions(); // Refresh the labels in the dropdown list
         }
 
-        // Dropdown interactive loading framework change event
+        // Dedicated load method to review saved slot contents
         function loadFromSelectedSlot() {
             const activeSlot = document.getElementById('saveSlotSelect').value;
             const storedData = localStorage.getItem(activeSlot);
+            const slotFriendlyName = activeSlot.replace('_', ' ').toUpperCase();
             
             if (storedData) {
                 unpackFormData(JSON.parse(storedData));
             } else {
-                // If empty slot, scrub current dynamic input tables but preserve core context settings
+                // If checking an empty slot, reset input logs but safeguard setup properties
                 document.getElementById('clientName').value = DEFAULT_CLIENT;
                 document.getElementById('allocatedUsers').value = '';
                 setDefaultMonday();
@@ -517,7 +537,8 @@
 
             if (confirm(`Are you sure you want to completely clear all data inside [${userFriendlyName}]?`)) {
                 localStorage.removeItem(currentSlotKey);
-                loadFromSelectedSlot(); // Instantly update view to structural empty configurations
+                initSlotOptions(); // Re-render markers
+                loadFromSelectedSlot(); // Update layout view
             }
         }
 
